@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Laps counter</title>
 </head>
 
 <body>
@@ -22,7 +22,11 @@
             <label for="detectionConfidence">%</label>
         </div>
     </div>
-    <div style="font-size: 198px; margin:20px;">Laps: <span>0</span></div>
+    <div style="position:relative;">
+        <div style="font-size: 198px">
+            Laps: <span id="laps">0</span></div>
+        <span id="durata" style="position:absolute; margin-top: -50px;font-size: 40px;">0 min</span>
+    </div>
     <video />
 
 </body>
@@ -34,19 +38,22 @@
 
 <script>
     const videoElement = document.querySelector("video");
-    const lapsSpan = document.querySelector("span");
+    const lapsSpan = document.querySelector("#laps");
+    const duration = document.querySelector("#durata");
     const iddleDurationInput = document.querySelector("#iddleDuration");
     const detectionConfidenceInput = document.querySelector("#detectionConfidence");
     // remember values from last time
     iddleDurationInput.value = localStorage.getItem("iddleDuration") ?? "80";
     detectionConfidence.value = localStorage.getItem("detectionConfidence") ?? "60";
     const timeBetweenSuccesiveDetectionAttempts = 100 * (localStorage.getItem("timeBetweenSuccesiveDetectionAttempts") ?? "2");
+    const detectLabel = localStorage.getItem("toDetectLabel") ?? "person";
     // when changed will update localStorage
     iddleDurationInput.addEventListener('change', () => localStorage.setItem("iddleDuration", iddleDurationInput.value));
     detectionConfidenceInput.addEventListener('change', () => localStorage.setItem("detectionConfidence", detectionConfidenceInput.value));
 
     var myModel = undefined;
     var apparitions = 0;
+    var fistLapAt = undefined;
 
     function deferPromise() {
         let resolveDefered = function () { };
@@ -90,12 +97,19 @@
         snd.play();
     }
 
+    function minutesSinceStart () {
+        const ms_perMinute = 1000 * 60;
+        return Math.floor((Date.now() - firstLapAt) / ms_perMinute);
+    }
+
     function countPerson(predictions) {
         const minimumDetectionConfidence = (0.0001 + detectionConfidenceInput.value) / 100
         for (let n = 0; n < predictions.length; n++) {
             if (predictions[n].score > minimumDetectionConfidence &&
-                "person" === predictions[n].class) {
+                detectLabel === predictions[n].class) {
                 apparitions += 1;
+                if (1 === apparitions) { firstLapAt = Date.now(); }
+                duration.innerHTML = minutesSinceStart() + " min";
                 lapsSpan.innerHTML = " " + apparitions;
                 beep();
                 return true;
